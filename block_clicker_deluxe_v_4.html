@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Block Clicker Deluxe V4</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #0f172a;
+      color: white;
+    }
+
+    #block {
+      width: 160px;
+      height: 160px;
+      margin: 20px auto;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 20px #22c55e;
+      transition: transform 0.1s;
+    }
+
+    #block:active {
+      transform: scale(0.9);
+    }
+
+    .panel {
+      margin: 15px auto;
+      padding: 15px;
+      background: #1e293b;
+      width: 300px;
+      border-radius: 10px;
+    }
+
+    .btn {
+      margin: 6px;
+      padding: 10px;
+      background: #334155;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .btn:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🟩 Block Clicker Deluxe V4</h1>
+<p>Blocks: <span id="blocks">0</span></p>
+<p>Per Second: <span id="bps">0</span></p>
+<p>Per Click: <span id="bpc">1</span></p>
+<p>Multiplier: x<span id="multi">1</span></p>
+
+<div id="block"></div>
+
+<div class="panel">
+<h3>Generators</h3>
+<div class="btn" onclick="buy('cursor')">Cursor (+1/sec) Cost: <span id="cursorCost"></span></div>
+<div class="btn" onclick="buy('factory')">Factory (+5/sec) Cost: <span id="factoryCost"></span></div>
+<div class="btn" onclick="buy('mine')">Mine (+20/sec) Cost: <span id="mineCost"></span></div>
+</div>
+
+<div class="panel">
+<h3>Upgrades</h3>
+<div class="btn" onclick="upgradeClick()">Click Power Cost: <span id="clickCost"></span></div>
+<div class="btn" onclick="upgradeGen()">Double Generators Cost: <span id="genCost"></span></div>
+</div>
+
+<div class="panel">
+<h3>Block Skins</h3>
+<div class="btn" onclick="buySkin('green')">Green (Free)</div>
+<div class="btn" onclick="buySkin('blue')">Blue Cost: 500</div>
+<div class="btn" onclick="buySkin('red')">Red Cost: 2000</div>
+<div class="btn" onclick="buySkin('gold')">Gold Cost: 10000</div>
+</div>
+
+<div class="panel">
+<h3>Prestige</h3>
+<div class="btn" onclick="prestige()">Reset for +0.5x (Need 1000)</div>
+</div>
+
+<script>
+
+/*
+=========================
+UPDATE LOG - VERSION 4
+=========================
+- Added generator multiplier upgrade
+- Added block skins system
+- Added number formatting (K, M, B, T)
+- Improved performance (less recalculation)
+- Added visual click popups
+- Balanced scaling
+- Cleaner structure
+=========================
+*/
+
+let game = {
+  blocks: 0,
+  bps: 0,
+  bpc: 1,
+  multi: 1,
+
+  genMulti: 1,
+
+  cursor: 0,
+  factory: 0,
+  mine: 0,
+
+  cursorCost: 10,
+  factoryCost: 50,
+  mineCost: 200,
+
+  clickCost: 25,
+  genCost: 100,
+
+  skin: "green",
+
+  lastTime: Date.now()
+};
+
+// LOAD
+if (localStorage.getItem("blockV4")) {
+  game = JSON.parse(localStorage.getItem("blockV4"));
+}
+
+// SKINS
+function applySkin() {
+  let block = document.getElementById("block");
+
+  if (game.skin === "green") block.style.background = "linear-gradient(145deg,#22c55e,#15803d)";
+  if (game.skin === "blue") block.style.background = "linear-gradient(145deg,#3b82f6,#1d4ed8)";
+  if (game.skin === "red") block.style.background = "linear-gradient(145deg,#ef4444,#991b1b)";
+  if (game.skin === "gold") block.style.background = "linear-gradient(145deg,#facc15,#ca8a04)";
+}
+
+function buySkin(type) {
+  if (type === "green") game.skin = "green";
+
+  if (type === "blue" && game.blocks >= 500) {
+    game.blocks -= 500;
+    game.skin = "blue";
+  }
+
+  if (type === "red" && game.blocks >= 2000) {
+    game.blocks -= 2000;
+    game.skin = "red";
+  }
+
+  if (type === "gold" && game.blocks >= 10000) {
+    game.blocks -= 10000;
+    game.skin = "gold";
+  }
+
+  applySkin();
+  update();
+}
+
+// CLICK
+let block = document.getElementById("block");
+block.onclick = (e) => {
+  let gain = game.bpc * game.multi;
+  game.blocks += gain;
+
+  let pop = document.createElement("div");
+  pop.textContent = "+" + gain;
+  pop.style.position = "absolute";
+  pop.style.left = e.pageX + "px";
+  pop.style.top = e.pageY + "px";
+  pop.style.color = "#22c55e";
+  document.body.appendChild(pop);
+
+  setTimeout(() => pop.remove(), 800);
+
+  update();
+};
+
+// GENERATORS
+function buy(type) {
+  if (type === "cursor" && game.blocks >= game.cursorCost) {
+    game.blocks -= game.cursorCost;
+    game.cursor++;
+    game.cursorCost *= 1.5;
+  }
+
+  if (type === "factory" && game.blocks >= game.factoryCost) {
+    game.blocks -= game.factoryCost;
+    game.factory++;
+    game.factoryCost *= 1.6;
+  }
+
+  if (type === "mine" && game.blocks >= game.mineCost) {
+    game.blocks -= game.mineCost;
+    game.mine++;
+    game.mineCost *= 1.8;
+  }
+
+  calcBPS();
+  update();
+}
+
+// UPGRADES
+function upgradeClick() {
+  if (game.blocks >= game.clickCost) {
+    game.blocks -= game.clickCost;
+    game.bpc++;
+    game.clickCost *= 2;
+    update();
+  }
+}
+
+function upgradeGen() {
+  if (game.blocks >= game.genCost) {
+    game.blocks -= game.genCost;
+    game.genMulti *= 2;
+    game.genCost *= 3;
+    calcBPS();
+    update();
+  }
+}
+
+// CALC
+function calcBPS() {
+  game.bps = (game.cursor*1 + game.factory*5 + game.mine*20) * game.multi * game.genMulti;
+}
+
+// PRESTIGE
+function prestige() {
+  if (game.blocks >= 1000) {
+    game.multi += 0.5;
+
+    game.blocks = 0;
+    game.bpc = 1;
+    game.cursor = 0;
+    game.factory = 0;
+    game.mine = 0;
+
+    game.cursorCost = 10;
+    game.factoryCost = 50;
+    game.mineCost = 200;
+    game.clickCost = 25;
+    game.genCost = 100;
+
+    calcBPS();
+    update();
+  }
+}
+
+// FORMAT
+function format(num) {
+  if (num < 1000) return Math.floor(num);
+  if (num < 1e6) return (num/1e3).toFixed(1)+"K";
+  if (num < 1e9) return (num/1e6).toFixed(1)+"M";
+  if (num < 1e12) return (num/1e9).toFixed(1)+"B";
+  return (num/1e12).toFixed(1)+"T";
+}
+
+// LOOP
+setInterval(()=>{
+  let now = Date.now();
+  let diff = (now - game.lastTime)/1000;
+
+  game.blocks += game.bps * diff;
+  game.lastTime = now;
+
+  update();
+},100);
+
+// UPDATE
+function update() {
+  document.getElementById("blocks").textContent = format(game.blocks);
+  document.getElementById("bps").textContent = game.bps.toFixed(1);
+  document.getElementById("bpc").textContent = game.bpc;
+  document.getElementById("multi").textContent = game.multi.toFixed(1);
+
+  document.getElementById("cursorCost").textContent = Math.floor(game.cursorCost);
+  document.getElementById("factoryCost").textContent = Math.floor(game.factoryCost);
+  document.getElementById("mineCost").textContent = Math.floor(game.mineCost);
+  document.getElementById("clickCost").textContent = Math.floor(game.clickCost);
+  document.getElementById("genCost").textContent = Math.floor(game.genCost);
+
+  localStorage.setItem("blockV4", JSON.stringify(game));
+  applySkin();
+}
+
+// OFFLINE
+window.onload = () => {
+  let now = Date.now();
+  let diff = (now - game.lastTime)/1000;
+
+  game.blocks += game.bps * diff;
+  game.lastTime = now;
+
+  calcBPS();
+  update();
+};
+
+calcBPS();
+update();
+
+</script>
+
+</body>
+</html>
