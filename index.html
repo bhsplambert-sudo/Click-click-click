@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Block Clicker Deluxe V9</title>
+  <style>
+    body { font-family: Arial; text-align: center; background: #0f172a; color: white; }
+    #block { width:160px;height:160px;margin:20px auto;border-radius:12px;cursor:pointer;box-shadow:0 0 20px #22c55e;transition:transform .1s; }
+    #block:active { transform: scale(0.9); }
+
+    #bossImg { width:200px; margin:10px auto; display:none; }
+
+    .hpbar {
+      width:80%;
+      height:20px;
+      background:#444;
+      margin:10px auto;
+      border-radius:10px;
+      overflow:hidden;
+    }
+
+    .hpfill {
+      height:100%;
+      background:#ef4444;
+      width:100%;
+    }
+
+    .panel { margin:15px auto;padding:15px;background:#1e293b;width:360px;border-radius:10px; }
+    .btn { margin:6px;padding:10px;background:#334155;cursor:pointer;border-radius:6px; }
+    .btn:hover { background:#475569; }
+
+    .pop {
+      position:absolute;
+      color:#22c55e;
+      font-weight:bold;
+      pointer-events:none;
+      animation: float 0.8s ease-out forwards;
+    }
+
+    @keyframes float {
+      0% { opacity:1; transform:translateY(0); }
+      100% { opacity:0; transform:translateY(-40px); }
+    }
+  </style>
+</head>
+<body>
+
+<h1>🟩 Block Clicker Deluxe V9</h1>
+<p>Blocks: <span id="blocks">0</span></p>
+<p>BPS: <span id="bps">0</span></p>
+<p>BPC: <span id="bpc">1</span></p>
+<p>Multiplier: x<span id="multi">1</span></p>
+<p>Gems: 💎 <span id="gems">0</span></p>
+<p>Skill Points: ⭐ <span id="sp">0</span></p>
+
+<div id="block"></div>
+
+<div class="panel">
+<h3>Boss Fight</h3>
+<img id="bossImg" src="file:///mnt/data/IMG_0745.jpeg">
+<div class="hpbar"><div id="hpfill" class="hpfill"></div></div>
+<p>HP: <span id="bossHP">None</span> | Time: <span id="bossTime">0</span></p>
+<div class="btn" onclick="startBoss()">Start Boss</div>
+<div class="btn" onclick="hitBoss()">Attack</div>
+<p id="bossStatus"></p>
+</div>
+
+<script>
+/*
+=========================
+UPDATE LOG - VERSION 9
+=========================
+- Added boss image
+- Added HP bar system
+- Added click pop effects
+- Improved boss UI
+=========================
+*/
+
+let game = { blocks:0,bps:0,bpc:1,multi:1,gems:0,sp:0,lastTime:Date.now() };
+let boss = { active:false, hp:0, max:0, time:0 };
+
+// CLICK EFFECT
+block.onclick=(e)=>{
+  let gain = game.bpc * game.multi;
+  game.blocks += gain;
+
+  let pop = document.createElement("div");
+  pop.className = "pop";
+  pop.textContent = "+"+gain;
+  pop.style.left = e.pageX+"px";
+  pop.style.top = e.pageY+"px";
+  document.body.appendChild(pop);
+
+  setTimeout(()=>pop.remove(),800);
+
+  update();
+};
+
+// BOSS
+function startBoss(){
+  boss.active=true;
+  boss.max = 300 + game.gems*150;
+  boss.hp = boss.max;
+  boss.time = 10;
+
+  document.getElementById("bossImg").style.display="block";
+  document.getElementById("bossStatus").textContent="Boss Appeared!";
+}
+
+function hitBoss(){
+  if(!boss.active) return;
+
+  let dmg = game.bpc * game.multi;
+  boss.hp -= dmg;
+
+  if(boss.hp <= 0){
+    boss.active=false;
+    game.gems+=3;
+    document.getElementById("bossStatus").textContent="Victory! +3 Gems";
+    document.getElementById("bossImg").style.display="none";
+  }
+
+  update();
+}
+
+// LOOP
+setInterval(()=>{
+  let now=Date.now(); let diff=(now-game.lastTime)/1000;
+  game.blocks += game.bps * diff;
+
+  if(boss.active){
+    boss.time -= diff;
+    if(boss.time<=0){
+      boss.active=false;
+      document.getElementById("bossStatus").textContent="Boss escaped!";
+      document.getElementById("bossImg").style.display="none";
+    }
+  }
+
+  game.lastTime=now;
+  update();
+},100);
+
+function format(num){ if(num<1e3)return Math.floor(num); if(num<1e6)return (num/1e3).toFixed(1)+"K"; return (num/1e6).toFixed(1)+"M"; }
+
+function update(){
+  document.getElementById("blocks").textContent=format(game.blocks);
+  document.getElementById("bps").textContent=game.bps.toFixed(1);
+  document.getElementById("bpc").textContent=game.bpc;
+  document.getElementById("multi").textContent=game.multi.toFixed(1);
+  document.getElementById("gems").textContent=game.gems;
+  document.getElementById("sp").textContent=game.sp;
+
+  document.getElementById("bossHP").textContent=boss.active ? Math.floor(boss.hp) : "None";
+  document.getElementById("bossTime").textContent=boss.active ? boss.time.toFixed(1) : "0";
+
+  if(boss.active){
+    let percent = (boss.hp / boss.max) * 100;
+    document.getElementById("hpfill").style.width = percent + "%";
+  }
+}
+
+update();
+</script>
+</body>
+</html>
